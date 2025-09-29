@@ -1,6 +1,6 @@
 package Model;
 
-public enum Personality {
+public enum PersonalityType {
     LEADER,
     BALANCED,
     THINKER
