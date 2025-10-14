@@ -2,7 +2,7 @@ package Model;
 
 public class Participant {
 
-    private Integer id;
+    private String id;
     private String email;
     private String preferredGame;
     private Integer skillLevel;
@@ -10,7 +10,7 @@ public class Participant {
     private Integer personalityScore;
     private PersonalityType personalityType;
 
-    public Participant(Integer id, String email, String preferredGame, Integer skillLevel, RoleType preferredRole, Integer personalityScore, PersonalityType personalityType) {
+    public Participant(String id, String email, String preferredGame, Integer skillLevel, RoleType preferredRole, Integer personalityScore, PersonalityType personalityType) {
         this.id = id;
         this.email = email;
         this.preferredGame = preferredGame;
@@ -21,11 +21,11 @@ public class Participant {
     }
 
 
-    public Integer getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(String id) {
         this.id = id;
     }
 

@@ -4,11 +4,11 @@ import java.util.List;
 
 public class Team {
      private Integer team_id;
-     private List<Participant> participants;
+     private final List<Participant> participantList;
 
     public Team(Integer team_id, List<Participant> participants) {
         this.team_id = team_id;
-        this.participants = participants;
+        this.participantList = participants;
     }
 
     public Integer getTeam_id() {
@@ -19,15 +19,22 @@ public class Team {
         this.team_id = team_id;
     }
 
-    public List<Participant> getParticipants() {
-        return participants;
+    public void getParticipantList() {
+        System.out.println("Team " + team_id + ":");
+        for (Participant p : participantList) System.out.println(p);;
     }
 
-    public Boolean is_balanced(){
+    public void addMember(Participant participant){
+        participantList.add(participant);
+    }
+
+    public boolean containsParticipant(Participant participant){
+        return participantList.contains(participant);
+    }
+
+    public Boolean is_balanced(Team team){
+        int lengthOfTeam = team.participantList.size();
         return false;
     }
 
-    public void setParticipants(List<Participant> participants) {
-        this.participants = participants;
-    }
 }
