@@ -40,4 +40,30 @@ public class CSVHandler {
         reader.close();
         return participantList;
     }
+
+
+    public static void toCSV(List<Participant> participants, String path) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+
+        // Optional: write header
+        writer.write("ID,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
+        writer.newLine();
+
+        for (Participant p : participants) {
+            String line = String.join(",",
+                    p.getId(),
+                    p.getEmail(),
+                    p.getPreferredGame(),
+                    String.valueOf(p.getSkillLevel()),
+                    p.getPreferredRole().name(),
+                    String.valueOf(p.getPersonalityScore()),
+                    p.getPersonalityType().name()
+            );
+            writer.write(line);
+            writer.newLine();
+        }
+
+        writer.flush();
+        writer.close();
+    }
 }

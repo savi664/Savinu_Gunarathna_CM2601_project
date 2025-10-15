@@ -1,5 +1,6 @@
 package Model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Team {
@@ -19,17 +20,28 @@ public class Team {
         this.team_id = team_id;
     }
 
-    public void getParticipantList() {
+    public List<Participant> getParticipantList() {
         System.out.println("Team " + team_id + ":");
-        for (Participant p : participantList) System.out.println(p);;
+        List<Participant> participants = new ArrayList<>();
+        for (Participant p : participantList) {
+            System.out.println(p);
+            participants.add(p);
+        }
+        return participants;
     }
 
     public void addMember(Participant participant){
         participantList.add(participant);
     }
 
-    public boolean containsParticipant(Participant participant){
-        return participantList.contains(participant);
+    public boolean containsParticipant(String Id, Team team){
+        List<Participant> participantList = team.getParticipantList();
+        for(Participant p: participantList){
+            if(p.getId().equalsIgnoreCase(Id)){
+                return true;
+            }
+        }
+        return false;
     }
 
     public Boolean is_balanced(Team team){
