@@ -3,5 +3,6 @@ package Model;
 public enum PersonalityType {
     LEADER,
     BALANCED,
-    THINKER
+    THINKER,
+    SOCIALIZER
 }

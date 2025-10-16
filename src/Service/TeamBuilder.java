@@ -59,6 +59,9 @@ public class TeamBuilder {
         // Get up to 2 Thinkers
         addPersonalityType(team, PersonalityType.THINKER, 2);
 
+        // Get 1 Socializer
+        addPersonalityType(team, PersonalityType.SOCIALIZER, 1);
+
         // Fill remaining slots with Balanced
         while (team.getParticipantList().size() < teamSize && !participants.isEmpty()) {
             Participant next = participants.removeFirst();
@@ -68,9 +71,9 @@ public class TeamBuilder {
         }
     }
 
-    /**
-     * Helper method that adds up to 'maxCount' participants
-     * with the given personality type to the team.
+    /*
+     Helper method that adds up to 'maxCount' participants
+     with the given personality type to the team.
      */
     private void addPersonalityType(Team team, PersonalityType type, int maxCount) {
         Iterator<Participant> iterator = participants.iterator();
@@ -85,6 +88,7 @@ public class TeamBuilder {
             }
         }
     }
+
 
     /**
      * Ensures the team has at least 3 different roles.
