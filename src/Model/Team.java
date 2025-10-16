@@ -7,9 +7,15 @@ public class Team {
      private Integer team_id;
      private final List<Participant> participantList;
 
+
     public Team(Integer team_id, List<Participant> participants) {
         this.team_id = team_id;
         this.participantList = participants;
+    }
+
+    public Team(int teamId) {
+        this.team_id = teamId;
+        this.participantList = new ArrayList<>();
     }
 
     public Integer getTeam_id() {
@@ -21,7 +27,6 @@ public class Team {
     }
 
     public List<Participant> getParticipantList() {
-        System.out.println("Team " + team_id + ":");
         List<Participant> participants = new ArrayList<>();
         for (Participant p : participantList) {
             System.out.println(p);
@@ -30,6 +35,11 @@ public class Team {
         return participants;
     }
 
+    public void printParticipants(){
+        for (Participant p : participantList) {
+            System.out.println("Participant: "+ p);
+        }
+    }
     public void addMember(Participant participant){
         participantList.add(participant);
     }
@@ -47,6 +57,14 @@ public class Team {
     public Boolean is_balanced(Team team){
         int lengthOfTeam = team.participantList.size();
         return false;
+    }
+
+    public int CalculateAvgSkill(){
+        int total = 0;
+        for(Participant p: participantList){
+            total +=  p.getSkillLevel();
+        }
+        return total/participantList.size();
     }
 
 }

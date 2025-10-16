@@ -10,7 +10,7 @@ import java.util.*;
 public class TeamBuilder {
     private List<Participant> participants;
     private int teamSize;
-    private Random random = new Random();
+    private final Random random = new Random();
 
     public TeamBuilder(List<Participant> participants, int teamSize) {
         // Copy the list to avoid modifying the original reference
@@ -117,8 +117,8 @@ public class TeamBuilder {
         List<Participant> toRemove = new ArrayList<>();
 
         // Count game occurrences in the team
-        for (Participant p : team.getMembers()) {
-            String game = p.getGame();
+        for (Participant p : team.getParticipantList()) {
+            String game = p.getPreferredGame();
             int count = gameCount.getOrDefault(game, 0);
 
             if (count >= maxPerGame) {
@@ -131,12 +131,12 @@ public class TeamBuilder {
         }
 
         // Remove excess players from the team
-        team.getMembers().removeAll(toRemove);
+        team.getParticipantList().removeAll(toRemove);
 
         // Fill remaining spots if needed
-        while (team.getMembers().size() < teamSize && !participants.isEmpty()) {
+        while (team.getParticipantList().size() < teamSize && !participants.isEmpty()) {
             Participant next = participants.remove(0);
-            String game = next.getGame();
+            String game = next.getPreferredGame();
             int count = gameCount.getOrDefault(game, 0);
 
             if (count < maxPerGame) {
@@ -148,47 +148,60 @@ public class TeamBuilder {
             }
 
             // Safety break to avoid infinite loops
-            if (participants.size() <= team.getMembers().size()) break;
+            if (participants.size() <= team.getParticipantList().size()) break;
         }
     }
 
-    /**
-     * Balances the skill levels across teams.
-     * Swaps high-skill and low-skill players between teams
-     * to keep averages close to the global mean.
+    /*
+      Balances the skill levels across teams.
+      Swaps high-skill and low-skill players between teams
+      to keep averages close to the global mean.
      */
     private void balanceSkillLevels(List<Team> teams) {
-        double globalAvg = teams.stream()
-                .mapToDouble(Team::averageSkill)
-                .average()
-                .orElse(0);
+        // Step 1: Calculate global average skill across all teams
+        double globalAvg = 0;
+        for (Team team : teams) {
+            globalAvg += team.CalculateAvgSkill();
+        }
+        globalAvg /= teams.size();
 
-        // Try to bring team averages closer to global average
+        // Step 2: Compare each team to the next one and balance if needed
         for (int i = 0; i < teams.size() - 1; i++) {
             Team teamA = teams.get(i);
             Team teamB = teams.get(i + 1);
 
-            double diffA = teamA.averageSkill() - globalAvg;
-            double diffB = teamB.- globalAvg;
+            double diffA = teamA.CalculateAvgSkill() - globalAvg;
+            double diffB = teamB.CalculateAvgSkill() - globalAvg;
 
-            // If skill gap between teams is too high, swap members
+            // Step 3: If difference between their averages is too high, swap
             if (Math.abs(diffA - diffB) > 10) {
-                Participant strong = teamA.getParticipantList().stream()
-                        .max(Comparator.comparingInt(Participant::getSkillLevel))
-                        .orElse(null);
+                // Find the strongest player in A and weakest in B
+                Participant strongest = null;
+                Participant weakest = null;
 
-                Participant weak = teamB.getParticipantList().stream()
-                        .min(Comparator.comparingInt(Participant::getSkillLevel))
-                        .orElse(null);
+                for (Participant p : teamA.getParticipantList()) {
+                    if (strongest == null || p.getSkillLevel() > strongest.getSkillLevel()) {
+                        strongest = p;
+                    }
+                }
 
-                if (strong != null && weak != null) {
-                    teamA.getParticipantList().remove(strong);
-                    teamB.getParticipantList().remove(weak);
-                    teamA.addMember(weak);
-                    teamB.addMember(strong);
+                for (Participant p : teamB.getParticipantList()) {
+                    if (weakest == null || p.getSkillLevel() < weakest.getSkillLevel()) {
+                        weakest = p;
+                    }
+                }
+
+                // Step 4: Swap them if both exist
+                if (strongest != null && weakest != null) {
+                    teamA.getParticipantList().remove(strongest);
+                    teamB.getParticipantList().remove(weakest);
+
+                    teamA.addMember(weakest);
+                    teamB.addMember(strongest);
                 }
             }
         }
     }
+
 }
 
