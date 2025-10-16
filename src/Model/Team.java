@@ -26,6 +26,10 @@ public class Team {
         this.team_id = team_id;
     }
 
+    public void removeMember(Participant p) {
+        participantList.remove(p);
+    }
+
     public List<Participant> getParticipantList() {
         List<Participant> participants = new ArrayList<>();
         for (Participant p : participantList) {
@@ -54,11 +58,6 @@ public class Team {
         return false;
     }
 
-    public Boolean is_balanced(Team team){
-        int lengthOfTeam = team.participantList.size();
-        return false;
-    }
-
     public int CalculateAvgSkill(){
         int total = 0;
         for(Participant p: participantList){
@@ -66,5 +65,44 @@ public class Team {
         }
         return total/participantList.size();
     }
+
+    // Returns the player with the highest skill level in the team
+    public Participant getStrongestPlayer() {
+        if (participantList.isEmpty()) return null;
+
+        Participant strongest = participantList.get(0);
+        for (Participant p : participantList) {
+            if (p.getSkillLevel() > strongest.getSkillLevel()) {
+                strongest = p;
+            }
+        }
+        return strongest;
+    }
+
+    // Returns the player with the lowest skill level in the team
+    public Participant getWeakestPlayer() {
+        if (participantList.isEmpty()) return null;
+
+        Participant weakest = participantList.get(0);
+        for (Participant p : participantList) {
+            if (p.getSkillLevel() < weakest.getSkillLevel()) {
+                weakest = p;
+            }
+        }
+        return weakest;
+    }
+
+    public void swapMember(Participant fromThisTeam, Participant fromOtherTeam, Team other) {
+        if (fromThisTeam == null || fromOtherTeam == null || other == null) return;
+
+        // Remove players from their original teams
+        this.participantList.remove(fromThisTeam);
+        other.participantList.remove(fromOtherTeam);
+
+        // Add them to the opposite teams
+        this.addMember(fromOtherTeam);
+        other.addMember(fromThisTeam);
+    }
+
 
 }
