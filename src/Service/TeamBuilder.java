@@ -179,26 +179,9 @@ public class TeamBuilder {
                 Participant strongest = null;
                 Participant weakest = null;
 
-                for (Participant p : teamA.getParticipantList()) {
-                    if (strongest == null || p.getSkillLevel() > strongest.getSkillLevel()) {
-                        strongest = p;
-                    }
-                }
-
-                for (Participant p : teamB.getParticipantList()) {
-                    if (weakest == null || p.getSkillLevel() < weakest.getSkillLevel()) {
-                        weakest = p;
-                    }
-                }
-
-                // Step 4: Swap them if both exist
-                if (strongest != null && weakest != null) {
-                    teamA.getParticipantList().remove(strongest);
-                    teamB.getParticipantList().remove(weakest);
-
-                    teamA.addMember(weakest);
-                    teamB.addMember(strongest);
-                }
+                strongest = teamA.getStrongestPlayer();
+                weakest = teamB.getWeakestPlayer();
+                teamA.swapMember(strongest, weakest, teamB);
             }
         }
     }
