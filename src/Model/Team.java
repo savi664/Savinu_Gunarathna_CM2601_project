@@ -7,12 +7,6 @@ public class Team {
      private Integer team_id;
      private final List<Participant> participantList;
 
-
-    public Team(Integer team_id, List<Participant> participants) {
-        this.team_id = team_id;
-        this.participantList = participants;
-    }
-
     public Team(int teamId) {
         this.team_id = teamId;
         this.participantList = new ArrayList<>();
@@ -70,7 +64,7 @@ public class Team {
     public Participant getStrongestPlayer() {
         if (participantList.isEmpty()) return null;
 
-        Participant strongest = participantList.get(0);
+        Participant strongest = participantList.getFirst();
         for (Participant p : participantList) {
             if (p.getSkillLevel() > strongest.getSkillLevel()) {
                 strongest = p;
@@ -83,7 +77,7 @@ public class Team {
     public Participant getWeakestPlayer() {
         if (participantList.isEmpty()) return null;
 
-        Participant weakest = participantList.get(0);
+        Participant weakest = participantList.getFirst();
         for (Participant p : participantList) {
             if (p.getSkillLevel() < weakest.getSkillLevel()) {
                 weakest = p;

@@ -8,8 +8,8 @@ import Model.Team;
 import java.util.*;
 
 public class TeamBuilder {
-    private List<Participant> participants;
-    private int teamSize;
+    private final List<Participant> participants;
+    private final int teamSize;
     private final Random random = new Random();
 
     public TeamBuilder(List<Participant> participants, int teamSize) {
@@ -36,7 +36,7 @@ public class TeamBuilder {
             // Build team step by step using our constraint rules
             ensurePersonalityMix(team);   // Rule 3
             ensureRoleDiversity(team);    // Rule 2
-            enforceGameCap(team, 2);      // Rule 1 (max 2 per game)
+            enforceGameCap(team);      // Rule 1 (max 2 per game)
 
             teams.add(team);
             teamId++;
@@ -59,6 +59,9 @@ public class TeamBuilder {
         // Get up to 2 Thinkers
         addPersonalityType(team, PersonalityType.THINKER, 2);
 
+        // Get 1 Socializer
+        addPersonalityType(team, PersonalityType.SOCIALIZER, 1);
+
         // Fill remaining slots with Balanced
         while (team.getParticipantList().size() < teamSize && !participants.isEmpty()) {
             Participant next = participants.removeFirst();
@@ -68,9 +71,9 @@ public class TeamBuilder {
         }
     }
 
-    /**
-     * Helper method that adds up to 'maxCount' participants
-     * with the given personality type to the team.
+    /*
+     Helper method that adds up to 'maxCount' participants
+     with the given personality type to the team.
      */
     private void addPersonalityType(Team team, PersonalityType type, int maxCount) {
         Iterator<Participant> iterator = participants.iterator();
@@ -85,6 +88,7 @@ public class TeamBuilder {
             }
         }
     }
+
 
     /**
      * Ensures the team has at least 3 different roles.
@@ -112,7 +116,7 @@ public class TeamBuilder {
      * Enforces a cap on how many players from the same game can be in one team.
      * Default cap is 2 players per game.
      */
-    private void enforceGameCap(Team team, int maxPerGame) {
+    private void enforceGameCap(Team team) {
         Map<String, Integer> gameCount = new HashMap<>();
         List<Participant> toRemove = new ArrayList<>();
 
@@ -121,7 +125,7 @@ public class TeamBuilder {
             String game = p.getPreferredGame();
             int count = gameCount.getOrDefault(game, 0);
 
-            if (count >= maxPerGame) {
+            if (count >= 2) {
                 // Too many players from this game — move back to pool
                 toRemove.add(p);
                 participants.add(p);
@@ -135,11 +139,11 @@ public class TeamBuilder {
 
         // Fill remaining spots if needed
         while (team.getParticipantList().size() < teamSize && !participants.isEmpty()) {
-            Participant next = participants.remove(0);
+            Participant next = participants.removeFirst();
             String game = next.getPreferredGame();
             int count = gameCount.getOrDefault(game, 0);
 
-            if (count < maxPerGame) {
+            if (count < 2) {
                 team.addMember(next);
                 gameCount.put(game, count + 1);
             } else {
@@ -176,29 +180,12 @@ public class TeamBuilder {
             // Step 3: If difference between their averages is too high, swap
             if (Math.abs(diffA - diffB) > 10) {
                 // Find the strongest player in A and weakest in B
-                Participant strongest = null;
-                Participant weakest = null;
+                Participant strongest;
+                Participant weakest;
 
-                for (Participant p : teamA.getParticipantList()) {
-                    if (strongest == null || p.getSkillLevel() > strongest.getSkillLevel()) {
-                        strongest = p;
-                    }
-                }
-
-                for (Participant p : teamB.getParticipantList()) {
-                    if (weakest == null || p.getSkillLevel() < weakest.getSkillLevel()) {
-                        weakest = p;
-                    }
-                }
-
-                // Step 4: Swap them if both exist
-                if (strongest != null && weakest != null) {
-                    teamA.getParticipantList().remove(strongest);
-                    teamB.getParticipantList().remove(weakest);
-
-                    teamA.addMember(weakest);
-                    teamB.addMember(strongest);
-                }
+                strongest = teamA.getStrongestPlayer();
+                weakest = teamB.getWeakestPlayer();
+                teamA.swapMember(strongest, weakest, teamB);
             }
         }
     }
