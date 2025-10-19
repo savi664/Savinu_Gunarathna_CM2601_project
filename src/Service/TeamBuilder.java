@@ -6,11 +6,15 @@ import Model.RoleType;
 import Model.Team;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class TeamBuilder {
     private final List<Participant> participants;
     private final int teamSize;
     private final Random random = new Random();
+
+    //This is set to public because it is not a attribute but a placeholder
+    public static List<Team> teams;
 
     public TeamBuilder(List<Participant> participants, int teamSize) {
         // Copy the list to avoid modifying the original reference
@@ -27,26 +31,56 @@ public class TeamBuilder {
         // Randomize participants to avoid selection bias
         Collections.shuffle(participants, random);
 
+        int totalParticipants = participants.size();
+        int estimatedTeams = Math.max(1, totalParticipants / teamSize);
+
+        // Calculate the target min and max size per team
+        int minSize = teamSize;
+        int maxSize = teamSize + 2; // up to 2 more members allowed
+
         int teamId = 1;
 
-        // Keep building teams until we run out of participants
+        // Create teams until all participants are assigned
         while (!participants.isEmpty()) {
             Team team = new Team(teamId);
 
-            // Build team step by step using our constraint rules
-            ensurePersonalityMix(team);   // Rule 3
-            ensureRoleDiversity(team);    // Rule 2
-            enforceGameCap(team);      // Rule 1 (max 2 per game)
+            // Build team following defined rules
+            ensurePersonalityMix(team);
+            ensureRoleDiversity(team);
+            enforceGameCap(team);
+
+            // Ensure team doesn’t exceed allowed upper range
+            while (team.getParticipantList().size() > maxSize && !participants.isEmpty()) {
+                Participant last = team.getParticipantList().removeLast();
+                participants.add(last); // push back to pool
+            }
 
             teams.add(team);
             teamId++;
+
+            // Stop forming if remaining participants can be distributed fairly
+            if (participants.size() <= estimatedTeams && participants.size() <= maxSize) break;
         }
 
-        // After forming all teams, adjust for skill fairness
-        balanceSkillLevels(teams); // Rule 4
+        // If some participants remain, add them fairly to existing teams
+        int index = 0;
+        while (!participants.isEmpty()) {
+            Team target = teams.get(index % teams.size());
+            if (target.getParticipantList().size() < maxSize) {
+                Participant next = participants.removeFirst();
+                if (canAddWithRules(target, next)) {
+                    target.addMember(next);
+                }
+            }
+            index++;
+        }
+
+        // Adjust for skill fairness
+        balanceSkillLevels(teams);
 
         return teams;
     }
+
 
     /**
      * Tries to assign personalities following the mix rule:
@@ -188,6 +222,74 @@ public class TeamBuilder {
                 teamA.swapMember(strongest, weakest, teamB);
             }
         }
+    }
+
+    public void RemoveMember(int TeamID, String ParticipantID){
+        for (Team team: teams) {
+            if (team.getTeam_id() == TeamID) {
+                // Find and remove participant
+                Participant toRemove = null;
+                for (Participant p : team.getParticipantList()) {
+                    if (p.getId().equalsIgnoreCase(ParticipantID)) {
+                        toRemove = p;
+                        team.removeMember(toRemove);
+                    }
+                }
+            }
+
+        }
+
+    }
+
+    public boolean addMember(int teamId, Participant candidate) {
+        for (Team team : teams) {
+            if (team.getTeam_id() == teamId) {
+
+                if (canAddWithRules(team, candidate)) {
+                    team.addMember(candidate);
+                    return true;
+                }
+                return false; // reject if it breaks rules
+            }
+        }
+        return false;
+    }
+
+
+    private boolean canAddWithRules(Team team, Participant candidate) {
+
+        // ---- Game Cap Rule (Max 2 per game) ----
+        long sameGameCount = team.getParticipantList().stream()
+                .filter(p -> p.getPreferredGame().equals(candidate.getPreferredGame()))
+                .count();
+        if (sameGameCount >= 2) return false;
+
+        // ---- Personality Rule ----
+        long leaderCount  = countPersonality(team, PersonalityType.LEADER);
+        long thinkerCount = countPersonality(team, PersonalityType.THINKER);
+        long socialCount  = countPersonality(team, PersonalityType.SOCIALIZER);
+
+        switch (candidate.getPersonalityType()) {
+            case LEADER -> { if (leaderCount >= 1) return false; }
+            case THINKER -> { if (thinkerCount >= 2) return false; }
+            case SOCIALIZER -> { if (socialCount >= 1) return false; }
+            // Not checking balanced because it is a mix of the personalities
+        }
+
+        // ---- Role Diversity Rule (At least 3 roles total) ----
+        Set<RoleType> roles = team.getParticipantList().stream()
+                .map(Participant::getPreferredRole)
+                .collect(Collectors.toSet());
+        roles.add(candidate.getPreferredRole());
+
+        return roles.size() >= 3;
+    }
+
+
+    private long countPersonality(Team team, PersonalityType type) {
+        return team.getParticipantList().stream()
+                .filter(p -> p.getPersonalityType() == type)
+                .count();
     }
 
 }
