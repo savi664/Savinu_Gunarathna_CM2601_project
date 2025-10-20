@@ -241,19 +241,31 @@ public class TeamBuilder {
 
     }
 
-    public boolean addMember(int teamId, Participant candidate) {
-        for (Team team : teams) {
-            if (team.getTeam_id() == teamId) {
+    public boolean addMember(Participant candidate) {
+        Team bestTeam = null;
+        double minSkillDiff = Double.MAX_VALUE;
 
-                if (canAddWithRules(team, candidate)) {
-                    team.addMember(candidate);
-                    return true;
+        for (Team team : teams) {
+            if (canAddWithRules(team, candidate)) {
+                // Calculate difference between candidate skill and team average
+                double diff = Math.abs(team.CalculateAvgSkill() - candidate.getSkillLevel());
+
+                // Pick the team with closest skill average
+                if (diff < minSkillDiff) {
+                    minSkillDiff = diff;
+                    bestTeam = team;
                 }
-                return false; // reject if it breaks rules
             }
         }
-        return false;
+
+        if (bestTeam != null) {
+            bestTeam.addMember(candidate);
+            return true;
+        }
+
+        return false; // no suitable team found
     }
+
 
 
     private boolean canAddWithRules(Team team, Participant candidate) {

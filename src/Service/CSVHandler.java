@@ -72,7 +72,6 @@ public class CSVHandler {
                 writer.write(line);
                 writer.newLine();
             }
-            // Add one blank line only **before the next team's participants**
             writer.newLine();
         }
 
