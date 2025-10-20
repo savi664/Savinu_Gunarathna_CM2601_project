@@ -4,15 +4,26 @@ public class Participant {
 
     private String id;
     private String email;
+    private String name;
     private String preferredGame;
     private Integer skillLevel;
     private RoleType preferredRole;
     private Integer personalityScore;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     private PersonalityType personalityType;
 
-    public Participant(String id, String email, String preferredGame, Integer skillLevel, RoleType preferredRole, Integer personalityScore, PersonalityType personalityType) {
+    public Participant(String id,String name, String email, String preferredGame, Integer skillLevel, RoleType preferredRole, Integer personalityScore, PersonalityType personalityType) {
         this.id = id;
         this.email = email;
+        this.name = name;
         this.preferredGame = preferredGame;
         this.skillLevel = skillLevel;
         this.preferredRole = preferredRole;
