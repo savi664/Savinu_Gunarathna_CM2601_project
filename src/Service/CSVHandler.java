@@ -3,6 +3,7 @@ import Exception.InvalidSurveyDataException;
 import Model.Participant;
 import Model.PersonalityType;
 import Model.RoleType;
+import Model.Team;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -48,27 +49,34 @@ public class CSVHandler {
 
 
 
-    public static void toCSV(List<Participant> participants, String path) throws IOException {
+    public static void toCSV(String path) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(path));
 
-        // Optional: write header
-        writer.write("ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
+        // Write header
+        writer.write("TeamID,ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
         writer.newLine();
 
-        for (Participant p : participants) {
-            String line = String.join(",",
-                    p.getId(),
-                    p.getName(),
-                    p.getEmail(),
-                    p.getPreferredGame(),
-                    String.valueOf(p.getSkillLevel()),
-                    p.getPreferredRole().name(),
-                    String.valueOf(p.getPersonalityScore()),
-                    p.getPersonalityType().name()
-            );
-            writer.write(line);
+        for (Team team : TeamBuilder.teams) {
+            for (Participant p : team.getParticipantList()) {
+                String line = String.join(",",
+                        String.valueOf(team.getTeam_id()), // Team ID
+                        p.getId(),
+                        p.getName(),
+                        p.getEmail(),
+                        p.getPreferredGame(),
+                        String.valueOf(p.getSkillLevel()),
+                        p.getPreferredRole().name(),
+                        String.valueOf(p.getPersonalityScore()),
+                        p.getPersonalityType().name()
+                );
+                writer.write(line);
+                writer.newLine();
+            }
+            // Add one blank line only **before the next team's participants**
             writer.newLine();
         }
+
         writer.close();
     }
+
 }
