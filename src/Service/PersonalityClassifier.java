@@ -43,5 +43,5 @@ public class PersonalityClassifier {
 
         return answers;
     }
-    }
+
 }
