@@ -1,18 +1,19 @@
 package Service;
 import Model.PersonalityType;
 import Exception.InvalidSurveyDataException;
+
+import java.util.Arrays;
 import java.util.Scanner;
 
 
 public class PersonalityClassifier {
     Scanner scanner = new Scanner(System.in);
-    public PersonalityType CalculatePersonalityScore(int Q1, int Q2 , int Q3 , int Q4 , int Q5){
-        int score =  (Q1+Q2+Q3+Q4+Q5) * 4;
-        return classifyPersonality(score);
+    public int CalculatePersonalityScore(int[] scores){
+        return Arrays.stream(scores).sum()*4;
     }
 
     //Helper class to classify the personality
-    private PersonalityType classifyPersonality(int score){
+    public PersonalityType classifyPersonality(int score){
         if (score >= 90) return PersonalityType.LEADER;
         else if (score >= 70) return PersonalityType.BALANCED;
         else if(score >= 50) return PersonalityType.THINKER;
@@ -35,6 +36,7 @@ public class PersonalityClassifier {
                 throw new InvalidSurveyDataException("Invalid input. Must be an integer between 1 and 5.");
             }
             int answer = scanner.nextInt();
+            scanner.nextLine();
             if (answer < 1 || answer > 5) {
                 throw new InvalidSurveyDataException("Invalid answer for Q" + (i + 1) + ". Must be 1-5.");
             }

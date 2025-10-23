@@ -44,13 +44,13 @@ public class Team {
         participantList.add(participant);
     }
 
-    public boolean containsParticipant(String Id){
+    public int containsParticipant(String Id){
         for(Participant p: participantList){
             if(p.getId().equalsIgnoreCase(Id)){
-                return true;
+                return participantList.indexOf(p);
             }
         }
-        return false;
+        return 0;
     }
 
     public int CalculateAvgSkill(){
@@ -99,32 +99,6 @@ public class Team {
         other.addMember(fromThisTeam);
     }
 
-    public void printTeams() {
-        if (TeamBuilder.teams.isEmpty()) {
-            System.out.println("There are no existing teams that have been created.");
-            return;
-        }
-
-        for (Team team : TeamBuilder.teams) {
-            System.out.println("\n==========================");
-            System.out.println(" Team " + team.getTeam_id());
-            System.out.println("==========================");
-
-            for (Participant p : team.getParticipantList()) {
-                System.out.printf(
-                        "ID: %-5s | Name: %-15s | Email: %-25s | Role: %-10s | Game: %-10s | Skill: %-2d | Personality Score: %-3d | Personality Type: %-12s%n",
-                        p.getId(),
-                        p.getName(),
-                        p.getEmail(),
-                        p.getPreferredRole(),
-                        p.getPreferredGame(),
-                        p.getSkillLevel(),
-                        p.getPersonalityScore(),
-                        p.getPersonalityType()
-                );
-            }
-        }
-    }
 
 
 

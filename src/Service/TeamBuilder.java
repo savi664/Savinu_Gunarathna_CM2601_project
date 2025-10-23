@@ -223,39 +223,41 @@ public class TeamBuilder {
         }
     }
 
-    public void RemoveMember(int TeamID, String ParticipantID){
+    public void RemoveMemberFromTeam(String ParticipantID){
+        if (teams.isEmpty()){
+            System.out.println("\nThere are no teams to remove a player from");
+            return;
+        }
         for (Team team: teams) {
-            if (team.getTeam_id() == TeamID) {
-                // Find and remove participant
-                Participant toRemove = null;
-                for (Participant p : team.getParticipantList()) {
-                    if (p.getId().equalsIgnoreCase(ParticipantID)) {
-                        toRemove = p;
-                        team.removeMember(toRemove);
-                    }
-                }
+            if (team.containsParticipant(ParticipantID) != 0){
+                team.removeMember(team.getParticipantList().get(team.containsParticipant(ParticipantID)));
+                System.out.println("Participant with the id "+ team.getParticipantList().get(team.containsParticipant(ParticipantID)).getId()+ "is removed from team " + team.getTeam_id());
+                return;
             }
 
         }
+        System.out.println("\nParticipant not found");
 
     }
 
-    public boolean addMembertoTeam(Participant candidate) {
+    public int addMembertoTeam(Participant candidate) {
         Team bestTeam = null;
         double minSkillDiff = Double.MAX_VALUE;
-        // if there are no teams created then we create a team to add the member
+
+        // If no teams exist, create a new one
         if (teams.isEmpty()){
-            Team team = new Team(teamId);
+            Team team = new Team(teamId++);
             team.addMember(candidate);
             teams.add(team);
-            return true;
+            return team.getTeam_id();
         }
-        for (Team team : teams) {
-            if (canAddWithRules(team, candidate)) {
-                // Calculate difference between candidate skill and team average
-                double diff = Math.abs(team.CalculateAvgSkill() - candidate.getSkillLevel());
 
-                // Pick the team with closest skill average
+        for (Team team : teams) {
+            // Also check max team size
+            if (team.getParticipantList().size() >= teamSize + 2) continue;
+
+            if (canAddWithRules(team, candidate)) {
+                double diff = Math.abs(team.CalculateAvgSkill() - candidate.getSkillLevel());
                 if (diff < minSkillDiff) {
                     minSkillDiff = diff;
                     bestTeam = team;
@@ -263,13 +265,18 @@ public class TeamBuilder {
             }
         }
 
-        if (bestTeam != null) {
-            bestTeam.addMember(candidate);
-            return true;
+        // If no suitable team found, create a new team
+        if (bestTeam == null) {
+            Team team = new Team(teamId++);
+            team.addMember(candidate);
+            teams.add(team);
+            return team.getTeam_id();
         }
 
-        return false; // no suitable team found
+        bestTeam.addMember(candidate);
+        return bestTeam.getTeam_id();
     }
+
 
 
 
@@ -307,6 +314,33 @@ public class TeamBuilder {
         return team.getParticipantList().stream()
                 .filter(p -> p.getPersonalityType() == type)
                 .count();
+    }
+
+    public void printTeams() {
+        if (TeamBuilder.teams.isEmpty()) {
+            System.out.println("There are no existing teams that have been created.");
+            return;
+        }
+
+        for (Team team : TeamBuilder.teams) {
+            System.out.println("\n==========================");
+            System.out.println(" Team " + team.getTeam_id());
+            System.out.println("==========================");
+
+            for (Participant p : team.getParticipantList()) {
+                System.out.printf(
+                        "ID: %-5s | Name: %-15s | Email: %-25s | Role: %-10s | Game: %-10s | Skill: %-2d | Personality Score: %-3d | Personality Type: %-12s%n",
+                        p.getId(),
+                        p.getName(),
+                        p.getEmail(),
+                        p.getPreferredRole(),
+                        p.getPreferredGame(),
+                        p.getSkillLevel(),
+                        p.getPersonalityScore(),
+                        p.getPersonalityType()
+                );
+            }
+        }
     }
 
 }

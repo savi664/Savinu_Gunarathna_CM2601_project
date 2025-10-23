@@ -50,7 +50,7 @@ public class CSVHandler {
 
 
 
-    public static void toCSV(String path) throws IOException {
+    public void toCSV(String path) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(path));
 
         // Write header
