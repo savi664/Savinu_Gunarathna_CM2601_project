@@ -12,6 +12,7 @@ public class TeamBuilder {
     private final List<Participant> participants;
     private final int teamSize;
     private final Random random = new Random();
+    int teamId = 1;
 
     //This is set to public because it is not a attribute but a placeholder
     public static List<Team> teams;
@@ -37,8 +38,6 @@ public class TeamBuilder {
         // Calculate the target min and max size per team
         int minSize = teamSize;
         int maxSize = teamSize + 2; // up to 2 more members allowed
-
-        int teamId = 1;
 
         // Create teams until all participants are assigned
         while (!participants.isEmpty()) {
@@ -241,10 +240,16 @@ public class TeamBuilder {
 
     }
 
-    public boolean addMember(Participant candidate) {
+    public boolean addMembertoTeam(Participant candidate) {
         Team bestTeam = null;
         double minSkillDiff = Double.MAX_VALUE;
-
+        // if there are no teams created then we create a team to add the member
+        if (teams.isEmpty()){
+            Team team = new Team(teamId);
+            team.addMember(candidate);
+            teams.add(team);
+            return true;
+        }
         for (Team team : teams) {
             if (canAddWithRules(team, candidate)) {
                 // Calculate difference between candidate skill and team average

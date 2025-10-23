@@ -15,6 +15,7 @@ public class CSVHandler {
         BufferedReader reader = new BufferedReader(new FileReader(new File(path)));
         String line = reader.readLine(); // skip header if exists
         List<Participant> participantList = new ArrayList<>();
+        line = reader.readLine();
 
         while (line != null) {
             String[] values = line.split(",");
