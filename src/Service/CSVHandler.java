@@ -13,7 +13,7 @@ public class CSVHandler {
 
     public List<Participant> ReadCSV(String path) throws IOException, InvalidSurveyDataException {
         BufferedReader reader = new BufferedReader(new FileReader(new File(path)));
-        String line = reader.readLine(); // skip header if exists
+        String line = reader.readLine();// skip header if exists
         List<Participant> participantList = new ArrayList<>();
         line = reader.readLine();
 
@@ -50,33 +50,37 @@ public class CSVHandler {
 
 
 
-    public static void toCSV(String path) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+    public void toCSV(String path, List<Team> teams) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
 
-        // Write header
-        writer.write("TeamID,ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
-        writer.newLine();
-
-        for (Team team : TeamBuilder.teams) {
-            for (Participant p : team.getParticipantList()) {
-                String line = String.join(",",
-                        String.valueOf(team.getTeam_id()), // Team ID
-                        p.getId(),
-                        p.getName(),
-                        p.getEmail(),
-                        p.getPreferredGame(),
-                        String.valueOf(p.getSkillLevel()),
-                        p.getPreferredRole().name(),
-                        String.valueOf(p.getPersonalityScore()),
-                        p.getPersonalityType().name()
-                );
-                writer.write(line);
-                writer.newLine();
-            }
+            // Write header
+            writer.write("TeamID,ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
             writer.newLine();
-        }
 
-        writer.close();
+            for (Team team : teams) {
+                for (Participant p : team.getParticipantList()) {
+                    writer.write(String.join(",",
+                            String.valueOf(team.getTeam_id()),
+                            escapeCSV(p.getId()),
+                            escapeCSV(p.getName()),
+                            escapeCSV(p.getEmail()),
+                            escapeCSV(p.getPreferredGame()),
+                            String.valueOf(p.getSkillLevel()),
+                            escapeCSV(p.getPreferredRole().name()),
+                            String.valueOf(p.getPersonalityScore()),
+                            escapeCSV(p.getPersonalityType().name())
+                    ));
+                    writer.newLine();
+                }
+            }
+        }
+    }
+    private String escapeCSV(String value) {
+        if (value.contains(",") || value.contains("\"")) {
+            value = value.replace("\"", "\"\"");
+            return "\"" + value + "\"";
+        }
+        return value;
     }
 
 }
