@@ -27,12 +27,7 @@ public class Team {
     }
 
     public List<Participant> getParticipantList() {
-        List<Participant> participants = new ArrayList<>();
-        for (Participant p : participantList) {
-            System.out.println(p);
-            participants.add(p);
-        }
-        return participants;
+        return participantList;
     }
 
     public void printParticipants(){
