@@ -39,44 +39,51 @@ public class Team {
         participantList.add(participant);
     }
 
-    public int containsParticipant(String Id){
-        for(Participant p: participantList){
-            if(p.getId().equalsIgnoreCase(Id)){
+    public int containsParticipant(String Id) {
+        for (Participant p : participantList) {
+            if (p.getId().equalsIgnoreCase(Id)) {
                 return participantList.indexOf(p);
             }
         }
-        return 0;
+        return -1; // Return -1 if participant is not found
     }
 
-    public int CalculateAvgSkill(){
-        int total = 0;
-        for(Participant p: participantList){
-            total +=  p.getSkillLevel();
+    public int CalculateAvgSkill() {
+        if (participantList.isEmpty()) {
+            return 0; // Return 0 for empty teams
         }
-        return total/participantList.size();
+        int total = 0;
+        for (Participant p : participantList) {
+            total += p.getSkillLevel();
+        }
+        return total / participantList.size();
     }
 
-    // Returns the player with the highest skill level in the team
     public Participant getStrongestPlayer() {
         if (participantList.isEmpty()) return null;
 
-        Participant strongest = participantList.getFirst();
+        Participant strongest = null;
+        int maxSkill = Integer.MIN_VALUE;
         for (Participant p : participantList) {
-            if (p.getSkillLevel() > strongest.getSkillLevel()) {
+            Integer skill = p.getSkillLevel();
+            if (skill != null && skill > maxSkill) {
                 strongest = p;
+                maxSkill = skill;
             }
         }
         return strongest;
     }
 
-    // Returns the player with the lowest skill level in the team
     public Participant getWeakestPlayer() {
         if (participantList.isEmpty()) return null;
 
-        Participant weakest = participantList.getFirst();
+        Participant weakest = null;
+        int minSkill = Integer.MAX_VALUE;
         for (Participant p : participantList) {
-            if (p.getSkillLevel() < weakest.getSkillLevel()) {
+            Integer skill = p.getSkillLevel();
+            if (skill != null && skill < minSkill) {
                 weakest = p;
+                minSkill = skill;
             }
         }
         return weakest;

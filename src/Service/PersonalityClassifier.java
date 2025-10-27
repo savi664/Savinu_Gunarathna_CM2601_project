@@ -8,15 +8,14 @@ import java.util.Scanner;
 
 public class PersonalityClassifier {
     Scanner scanner = new Scanner(System.in);
-    public int CalculatePersonalityScore(int[] scores){
-        return Arrays.stream(scores).sum()*4;
+    public int CalculatePersonalityScore(int[] scores) {
+        return Arrays.stream(scores).sum() * 4; // Maps 5–25 to 20–100
     }
 
-    //Helper class to classify the personality
-    public PersonalityType classifyPersonality(int score){
-        if (score >= 90) return PersonalityType.LEADER;
-        else if (score >= 70) return PersonalityType.BALANCED;
-        else if(score >= 50) return PersonalityType.THINKER;
+    public PersonalityType classifyPersonality(int score) {
+        if (score >= 80) return PersonalityType.LEADER; // Adjusted from 90
+        else if (score >= 60) return PersonalityType.BALANCED; // Adjusted from 70
+        else if (score >= 40) return PersonalityType.THINKER; // Adjusted from 50
         else return PersonalityType.SOCIALIZER;
     }
 
