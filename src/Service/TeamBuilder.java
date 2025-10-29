@@ -1,315 +1,274 @@
 package Service;
 
-import Model.Participant;
-import Model.PersonalityType;
-import Model.RoleType;
-import Model.Team;
+import Model.*;
 import Exception.SkillLevelOutOfBoundsException;
-import com.sun.tools.javac.Main;
 
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.DoubleStream;
 
 public class TeamBuilder {
     private final Deque<Participant> pool;
     private final List<Team> teams = new ArrayList<>();
     private int nextTeamId = 1;
 
-    // Configurable caps
+    // caps we don't want to break
     private static final int MAX_SAME_GAME = 2;
     private static final int MAX_THINKERS = 2;
     private static final int MAX_LEADERS = 1;
     private static final int MAX_SOCIALIZERS = 1;
-    private static final int MAX_TEAM_MEMBERS = 6; // max members per team
+    private static final int MAX_TEAM_SIZE = 6;
+
+
 
     public TeamBuilder(List<Participant> participants) {
-        if (participants.isEmpty()) throw new IllegalArgumentException("Participants list cannot be empty");
+        if (participants.isEmpty()) {
+            throw new IllegalArgumentException("Participants list cannot be empty");
+        }
         List<Participant> shuffled = new ArrayList<>(participants);
         Collections.shuffle(shuffled, new Random());
         this.pool = new LinkedList<>(shuffled);
     }
 
     public List<Team> getTeams() {
-        return new ArrayList<>(teams); // Return a copy to prevent external modification
+        return new ArrayList<>(teams);
     }
 
-    /** Form teams evenly, respecting personality and game caps */
     public List<Team> formTeams() {
-        int totalParticipants = pool.size();
-        int estimatedTeamCount = Math.max(1, (int) Math.ceil((double) totalParticipants / MAX_TEAM_MEMBERS));
+        int teamCount = Math.max(1, (int) Math.ceil(pool.size() / (double) MAX_TEAM_SIZE));
+        initTeams(teamCount);
 
-        // Initialize empty teams
-        for (int i = 0; i < estimatedTeamCount; i++) {
-            teams.add(new Team(nextTeamId++));
-        }
-
-        // Round-robin fill respecting caps
-        int idx = 0;
-        while (!pool.isEmpty()) {
-            Participant p = pool.removeFirst();
-            boolean placed = false;
-            for (int attempts = 0; attempts < teams.size(); attempts++) {
-                Team t = teams.get((idx + attempts) % teams.size());
-                if (canAddStrict(t, p)) {
-                    t.addMember(p);
-                    placed = true;
-                    idx++;
-                    break;
-                }
-            }
-            if (!placed) {
-                // If no team can take this participant, place in the team with fewest members (soft add)
-                Team minTeam = teams.stream().min(Comparator.comparingInt(a -> a.getParticipantList().size())).orElse(teams.get(0));
-                minTeam.addMember(p);
-                idx++;
-            }
-        }
-
-        // Skill balancing
-        balanceSkillLevels(teams);
+        placeEveryone();
+        balanceSkills();
 
         return teams;
     }
 
-    /** Remove a participant from any team */
     public void removeMemberFromTeams(String participantId) {
-        for (Team t : teams) {
-            int idx = t.containsParticipant(participantId);
-            if (idx != -1) { // Check for != -1 instead of >= 0
-                Participant removed = t.getParticipantList().get(idx);
-                t.removeMember(removed);
-                pool.addLast(removed);
-                System.out.println("Participant " + removed.getName() + " (ID: " + participantId + ") removed from Team " + t.getTeam_id());
+        for (Team team : teams) {
+            Participant p = team.containsParticipant(participantId);
+            if (p != null) {
+                team.removeMember(p);
+                pool.addLast(p);
+                System.out.println("Removed " + p.getName() + " (ID: " + participantId + ") from Team " + team.getTeam_id());
                 return;
             }
         }
-        System.out.println("Participant with ID " + participantId + " not found in any team.");
+        System.out.println("Participant ID " + participantId + " not found.");
     }
 
-    public void updateAtrribiute(String participantId, String whatToChange, Object newValue) throws IllegalArgumentException, SkillLevelOutOfBoundsException {
-        synchronized (teams) { // Ensure thread safety
-            for (Team t : teams) {
-                int idx = t.containsParticipant(participantId);
-                if (idx != -1) {
-                    Participant personToUpdate = t.getParticipantList().get(idx);
+    public void updateAttribute(String participantId, String what, Object newValue)
+            throws IllegalArgumentException, SkillLevelOutOfBoundsException {
 
-                    switch (whatToChange.toLowerCase().trim()) {
-                        case "id":
-                            if (!(newValue instanceof String)) {
-                                throw new IllegalArgumentException("New ID must be a String");
-                            }
-                            String newId = (String) newValue;
-                            personToUpdate.setId(newId);
-                            break;
-                        case "email":
-                            if (!(newValue instanceof String)) {
-                                throw new IllegalArgumentException("New email must be a String");
-                            }
-                            String newEmail = (String) newValue;
-                            if (!isValidEmail(newEmail)) {
-                                throw new IllegalArgumentException("Invalid email format");
-                            }
-                            personToUpdate.setEmail(newEmail);
-                            break;
-                        case "preferred game":
-                            if (!(newValue instanceof String newPreferredGame)) {
-                                throw new IllegalArgumentException("New preferred game must be a String");
-                            }
-                            personToUpdate.setPreferredGame(newPreferredGame);
-                            break;
-                        case "skill level":
-                            if (!(newValue instanceof Integer)) {
-                                throw new IllegalArgumentException("New skill level must be an Integer");
-                            }
-                            Integer newSkillLevel = (Integer) newValue;
-                            if (newSkillLevel < 1 || newSkillLevel > 10) {
-                                throw new SkillLevelOutOfBoundsException("Skill level must be between 1 and 10");
-                            }
-                            personToUpdate.setSkillLevel(newSkillLevel);
-                            break;
-                        case "preferred role":
-                            if (!(newValue instanceof String)) {
-                                throw new IllegalArgumentException("New role must be a String");
-                            }
-                            try {
-                                RoleType newRole = RoleType.valueOf(((String) newValue).trim().toUpperCase());
-                                personToUpdate.setPreferredRole(newRole);
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Invalid role. Must be STRATEGIST, ATTACKER, DEFENDER, SUPPORTER, or COORDINATOR");
-                            }
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Invalid attribute to change. Must be id, email, preferred game, skill level, or preferred role");
-                    }
-                    System.out.println("Participant " + personToUpdate.getName() + " (ID: " + participantId + ") updated successfully.");
-                    return;
-                }
-            }
-        }
-        System.out.println("Participant with ID " + participantId + " not found in any team.");
-    }
-
-    public static boolean isValidEmail(String email) {
-        String regex = "^[\\w.-]+@[\\w.-]+\\.\\w{2,}$";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(email);
-        return matcher.matches();
-    }
-
-    /** Add a participant dynamically to a team */
-    public int addMemberToTeam(Participant candidate) {
-        Team bestTeam = null;
-        int minSize = Integer.MAX_VALUE;
-        for (Team t : teams) {
-            if (!canAddStrict(t, candidate)) continue;
-            int size = t.getParticipantList().size();
-            if (size < minSize) {
-                minSize = size;
-                bestTeam = t;
-            }
+        Participant p = findInTeams(participantId);
+        if (p == null) {
+            System.out.println("Participant ID " + participantId + " not found.");
+            return;
         }
 
-        if (bestTeam != null) {
-            bestTeam.addMember(candidate);
-            System.out.println("Added " + candidate.getName() + " (ID: " + candidate.getId() + ") to Team " + bestTeam.getTeam_id());
-            return bestTeam.getTeam_id();
-        } else {
-            Team newTeam = new Team(nextTeamId++);
-            newTeam.addMember(candidate);
-            teams.add(newTeam);
-            System.out.println("Created new Team " + newTeam.getTeam_id() + " and added " + candidate.getName());
-            return newTeam.getTeam_id();
+        String key = what.toLowerCase().trim();
+        switch (key) {
+            case "id" -> setId(p, newValue);
+            case "email" -> setEmail(p, newValue);
+            case "preferred game" -> setGame(p, newValue);
+            case "skill level" -> setSkill(p, newValue);
+            case "preferred role" -> setRole(p, newValue);
+            default -> throw new IllegalArgumentException(
+                    "Can't change '" + what + "'. Use: id, email, preferred game, skill level, preferred role");
         }
+
+        System.out.println("Updated " + p.getName() + " (ID: " + participantId + ")");
     }
 
-    /** Print all teams */
     public void printTeams() {
         if (teams.isEmpty()) {
-            System.out.println("No teams created.");
+            System.out.println("No teams yet.");
             return;
         }
 
         double totalSkill = 0;
-        int totalMembers = 0;
+        int count = 0;
 
         for (Team team : teams) {
             System.out.println("\n==========================");
             System.out.println(" Team " + team.getTeam_id());
             System.out.println("==========================");
+
             for (Participant p : team.getParticipantList()) {
                 System.out.printf(
-                        "ID: %-5s | Name: %-15s | Email: %-25s | Role: %-10s | Game: %-10s | Skill: %-2d | Personality Score: %-3d | Personality Type: %-12s%n",
-                        p.getId(),
-                        p.getName(),
-                        p.getEmail(),
-                        p.getPreferredRole(),
-                        p.getPreferredGame(),
-                        p.getSkillLevel(),
-                        p.getPersonalityScore(),
-                        p.getPersonalityType()
+                        "ID: %-5s | Name: %-15s | Email: %-25s | Role: %-10s | Game: %-10s | Skill: %-2d | Score: %-3d | Type: %-12s%n",
+                        p.getId(), p.getName(), p.getEmail(), p.getPreferredRole(),
+                        p.getPreferredGame(), p.getSkillLevel(), p.getPersonalityScore(), p.getPersonalityType()
                 );
                 totalSkill += p.getSkillLevel();
-                totalMembers++;
+                count++;
             }
-            System.out.println("Team Average Skill:"+ team.CalculateAvgSkill());
+            System.out.println("Team Avg Skill: " + team.CalculateAvgSkill());
         }
 
-        double globalAvg = totalMembers == 0 ? 0 : totalSkill / totalMembers;
+        double globalAvg = count == 0 ? 0 : totalSkill / count;
         System.out.printf("\nGlobal Average Skill: %.2f%n", globalAvg);
     }
 
-    // ------------------ Utility Methods ------------------
+    // -----------------------------------------------------------------
 
-    private boolean canAddStrict(Team team, Participant candidate) {
-        if (team.getParticipantList().size() >= MAX_TEAM_MEMBERS) return false;
-
-        long sameGameCount = team.getParticipantList().stream()
-                .filter(p -> Objects.equals(p.getPreferredGame(), candidate.getPreferredGame()))
-                .count();
-        if (sameGameCount >= MAX_SAME_GAME) return false;
-
-        long leaderCount = countPersonality(team, PersonalityType.LEADER);
-        long thinkerCount = countPersonality(team, PersonalityType.THINKER);
-        long socialCount = countPersonality(team, PersonalityType.SOCIALIZER);
-
-        switch (candidate.getPersonalityType()) {
-            case LEADER -> { if (leaderCount >= MAX_LEADERS) return false; }
-            case THINKER -> { if (thinkerCount >= MAX_THINKERS) return false; }
-            case SOCIALIZER -> { if (socialCount >= MAX_SOCIALIZERS) return false; }
+    private void initTeams(int n) {
+        teams.clear();
+        for (int i = 0; i < n; i++) {
+            teams.add(new Team(nextTeamId++));
         }
+    }
 
-        return true;
+    private void placeEveryone() {
+        int idx = 0;
+        while (!pool.isEmpty()) {
+            Participant p = pool.removeFirst();
+            Team team = nextValidTeam(p, idx);
+            team.addMember(p);
+            idx = (idx + 1) % teams.size();
+        }
+    }
+
+    private Team nextValidTeam(Participant p, int start) {
+        for (int i = 0; i < teams.size(); i++) {
+            Team t = teams.get((start + i) % teams.size());
+            if (canAdd(t, p)) return t;
+        }
+        // fallback: smallest team
+        return teams.stream()
+                .min(Comparator.comparingInt(t -> t.getParticipantList().size()))
+                .orElse(teams.get(0));
+    }
+
+    private Team findFittingTeam(Participant p) {
+        return teams.stream()
+                .filter(t -> canAdd(t, p))
+                .min(Comparator.comparingInt(t -> t.getParticipantList().size()))
+                .orElse(null);
+    }
+
+    public Participant findInTeams(String id) {
+        synchronized (teams) {
+            for (Team t : teams) {
+                Participant p = t.containsParticipant(id);
+                if (p != null) return p;
+            }
+            return null;
+        }
+    }
+
+    // --- update helpers ---
+
+    private void setId(Participant p, Object v) {
+        if (!(v instanceof String s)) throw new IllegalArgumentException("ID must be String");
+        p.setId(s);
+    }
+
+    private void setEmail(Participant p, Object v) {
+        Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.-]+@[\\w.-]+\\.\\w{2,}$");
+        if (!(v instanceof String s)) throw new IllegalArgumentException("Email must be String");
+        if (!EMAIL_PATTERN.matcher(s).matches()) throw new IllegalArgumentException("Email not in the correct format");
+        p.setEmail(s);
+    }
+
+    private void setGame(Participant p, Object v) {
+        if (!(v instanceof String s)) throw new IllegalArgumentException("Game must be String");
+        p.setPreferredGame(s);
+    }
+
+    private void setSkill(Participant p, Object v) throws SkillLevelOutOfBoundsException {
+        if (!(v instanceof Integer i)) throw new IllegalArgumentException("Skill must be Integer");
+        if (i < 1 || i > 10) throw new SkillLevelOutOfBoundsException("Skill 1-10 only");
+        p.setSkillLevel(i);
+    }
+
+    private void setRole(Participant p, Object v) {
+        if (!(v instanceof String s)) throw new IllegalArgumentException("Role must be String");
+        try {
+            RoleType role = RoleType.valueOf(s.trim().toUpperCase());
+            p.setPreferredRole(role);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Role must be one of: STRATEGIST, ATTACKER, DEFENDER, SUPPORTER, COORDINATOR");
+        }
+    }
+
+    // --- constraints ---
+
+    private boolean canAdd(Team team, Participant p) {
+        if (team.getParticipantList().size() >= MAX_TEAM_SIZE) return false;
+
+        if (countGame(team, p.getPreferredGame()) >= MAX_SAME_GAME) return false;
+
+        return switch (p.getPersonalityType()) {
+            case LEADER -> countPersonality(team, PersonalityType.LEADER) < MAX_LEADERS;
+            case THINKER -> countPersonality(team, PersonalityType.THINKER) < MAX_THINKERS;
+            case SOCIALIZER -> countPersonality(team, PersonalityType.SOCIALIZER) < MAX_SOCIALIZERS;
+            default -> true;
+        };
+    }
+
+    private long countGame(Team team, String game) {
+        return team.getParticipantList().stream()
+                .filter(m -> Objects.equals(m.getPreferredGame(), game))
+                .count();
     }
 
     private long countPersonality(Team team, PersonalityType type) {
         return team.getParticipantList().stream()
-                .filter(p -> p.getPersonalityType() == type)
+                .filter(m -> m.getPersonalityType() == type)
                 .count();
     }
 
-    private void balanceSkillLevels(List<Team> teams) {
+    // --- skill balancing ---
+
+    private void balanceSkills() {
         if (teams.size() <= 1) return;
 
-        double currentVar = computeTeamAverageVariance(teams);
-        boolean improved;
-
+        boolean changed;
         do {
-            improved = false;
-            double bestVar = currentVar;
-            Team bestTeamA = null, bestTeamB = null;
+            changed = false;
+            double bestVar = variance();
+            Team bestA = null, bestB = null;
             Participant bestPa = null, bestPb = null;
 
             for (int i = 0; i < teams.size(); i++) {
                 for (int j = i + 1; j < teams.size(); j++) {
-                    Team a = teams.get(i);
-                    Team b = teams.get(j);
-
+                    Team a = teams.get(i), b = teams.get(j);
                     for (Participant pa : a.getParticipantList()) {
                         for (Participant pb : b.getParticipantList()) {
-                            if (pa.getSkillLevel() == null || pb.getSkillLevel() == null) continue;
-                            if (!canSwapRespectingCaps(a, b, pa, pb)) continue;
+                            if (!canSwap(a, b, pa, pb)) continue;
 
-                            swapParticipants(a, b, pa, pb);
-                            double newVar = computeTeamAverageVariance(teams);
-                            if (newVar + 1e-6 < bestVar) {
+                            swap(a, b, pa, pb);
+                            double newVar = variance();
+                            if (newVar < bestVar - 1e-6) {
                                 bestVar = newVar;
-                                bestTeamA = a;
-                                bestTeamB = b;
-                                bestPa = pa;
-                                bestPb = pb;
-                                improved = true;
+                                bestA = a; bestB = b; bestPa = pa; bestPb = pb;
+                                changed = true;
                             }
-                            swapParticipants(a, b, pb, pa); // Undo swap
+                            swap(a, b, pb, pa); // undo
                         }
                     }
                 }
             }
 
-            if (improved) {
-                swapParticipants(bestTeamA, bestTeamB, bestPa, bestPb);
-                currentVar = bestVar;
-            } else {
+            if (changed) {
+                swap(bestA, bestB, bestPa, bestPb);
             }
-
-        } while (improved);
+        } while (changed);
     }
 
-    private double computeTeamAverageVariance(List<Team> teams) {
-        DoubleStream avgStream = teams.stream().mapToDouble(Team::CalculateAvgSkill);
-        double mean = avgStream.average().orElse(0.0);
-        return teams.stream()
-                .mapToDouble(Team::CalculateAvgSkill)
-                .map(v -> Math.pow(v - mean, 2))
+    private double variance() {
+        double[] avgs = teams.stream().mapToDouble(Team::CalculateAvgSkill).toArray();
+        double mean = Arrays.stream(avgs).average().orElse(0.0);
+        return Arrays.stream(avgs)
+                .map(v -> (v - mean) * (v - mean))
                 .average().orElse(0.0);
     }
 
-    private boolean canSwapRespectingCaps(Team a, Team b, Participant pa, Participant pb) {
-        return canAddStrict(a, pb) && canAddStrict(b, pa);
+    private boolean canSwap(Team a, Team b, Participant pa, Participant pb) {
+        return canAdd(a, pb) && canAdd(b, pa);
     }
 
-    private void swapParticipants(Team a, Team b, Participant pa, Participant pb) {
+    private void swap(Team a, Team b, Participant pa, Participant pb) {
         a.removeMember(pa);
         b.removeMember(pb);
         a.addMember(pb);
