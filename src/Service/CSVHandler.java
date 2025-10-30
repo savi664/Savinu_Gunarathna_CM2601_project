@@ -1,4 +1,5 @@
 package Service;
+
 import Exception.InvalidSurveyDataException;
 import Model.Participant;
 import Model.PersonalityType;
@@ -11,16 +12,22 @@ import java.util.List;
 
 public class CSVHandler {
 
+    /**
+     * Reads participants from a CSV file (input format: no TeamID)
+     * Header is skipped if present.
+     */
     public List<Participant> readCSV(String path) throws IOException, InvalidSurveyDataException {
         BufferedReader reader = new BufferedReader(new FileReader(new File(path)));
-        String line = reader.readLine();// skip header if exists
         List<Participant> participantList = new ArrayList<>();
-        line = reader.readLine();
+
+        // Skip header
+        reader.readLine();
+        String line = reader.readLine();
 
         while (line != null) {
-            String[] values = line.split(",");
-            if (values.length < 8) { // CSV has 8 columns
-                throw new InvalidSurveyDataException("Invalid CSV row: " + line);
+            String[] values = line.split(",", -1); // Preserve empty trailing fields
+            if (values.length < 8) {
+                throw new InvalidSurveyDataException("Invalid CSV row (expected 8 columns): " + line);
             }
 
             try {
@@ -43,14 +50,13 @@ public class CSVHandler {
 
             line = reader.readLine();
         }
-
         reader.close();
         return participantList;
     }
 
-
-
-    // For List<Team>
+    /**
+     * Exports formed teams to CSV with TeamID
+     */
     public void toCSV(String path, List<Team> teams) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
             writer.write("TeamID,ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
@@ -58,47 +64,29 @@ public class CSVHandler {
 
             for (Team team : teams) {
                 for (Participant p : team.getParticipantList()) {
-                    writeParticipant(writer, team.getTeam_id(), p);
+                    writeParticipantWithTeam(writer, team.getTeam_id(), p);
                 }
             }
         }
     }
 
-    // For List<Participant> (e.g. unassigned people)
+    /**
+     * Exports unassigned participants (pool) to CSV — NO TeamID
+     */
     public void exportUnassignedUser(String path, List<Participant> participants) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
-            writer.write("TeamID,ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
+            writer.write("ID,Name,Email,PreferredGame,SkillLevel,Role,PersonalityScore,PersonalityType");
             writer.newLine();
 
             for (Participant p : participants) {
-                writeParticipant(writer, -1, p);  // -1 = no team
+                writeParticipantNoTeam(writer, p);
             }
         }
     }
 
-    // Helper to avoid duplication
-    private void writeParticipant(BufferedWriter writer, int teamId, Participant p) throws IOException {
-        writer.write(String.join(",",
-                String.valueOf(teamId),
-                escapeCSV(p.getId()),
-                escapeCSV(p.getName()),
-                escapeCSV(p.getEmail()),
-                escapeCSV(p.getPreferredGame()),
-                String.valueOf(p.getSkillLevel()),
-                escapeCSV(p.getPreferredRole().name()),
-                String.valueOf(p.getPersonalityScore()),
-                escapeCSV(p.getPersonalityType().name())
-        ));
-        writer.newLine();
-    }
-    private String escapeCSV(String value) {
-        if (value.contains(",") || value.contains("\"")) {
-            value = value.replace("\"", "\"\"");
-            return "\"" + value + "\"";
-        }
-        return value;
-    }
-
+    /**
+     * Adds a new participant to the original participant CSV (append mode)
+     */
     public void addToCSV(Participant p) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("participants_sample.csv", true))) {
             writer.write(String.join(",",
@@ -115,16 +103,58 @@ public class CSVHandler {
         }
     }
 
-    public void removeFromCSV(String id) throws InvalidSurveyDataException, IOException {
+    /**
+     * Removes a participant from the original CSV by rewriting the file
+     */
+    public void removeFromCSV(String id) throws IOException, InvalidSurveyDataException {
         List<Participant> participants = readCSV("participants_sample.csv");
-        for (Participant p : participants) {
-            if (p.getId().equalsIgnoreCase(id)) {
-                participants.remove(p);
-                exportUnassignedUser("participants_sample.csv", participants);
-            }
+        boolean removed = participants.removeIf(p -> p.getId().equalsIgnoreCase(id));
+
+        if (removed) {
+            exportUnassignedUser("participants_sample.csv", participants);
+            System.out.println("Participant removed from CSV.");
+        } else {
+            System.out.println("Participant not found in CSV.");
         }
-        System.out.println("Participant not in the competition");
     }
 
+    // === Helper Methods ===
 
+    private void writeParticipantWithTeam(BufferedWriter writer, int teamId, Participant p) throws IOException {
+        writer.write(String.join(",",
+                String.valueOf(teamId),
+                escapeCSV(p.getId()),
+                escapeCSV(p.getName()),
+                escapeCSV(p.getEmail()),
+                escapeCSV(p.getPreferredGame()),
+                String.valueOf(p.getSkillLevel()),
+                escapeCSV(p.getPreferredRole().name()),
+                String.valueOf(p.getPersonalityScore()),
+                escapeCSV(p.getPersonalityType().name())
+        ));
+        writer.newLine();
+    }
+
+    private void writeParticipantNoTeam(BufferedWriter writer, Participant p) throws IOException {
+        writer.write(String.join(",",
+                escapeCSV(p.getId()),
+                escapeCSV(p.getName()),
+                escapeCSV(p.getEmail()),
+                escapeCSV(p.getPreferredGame()),
+                String.valueOf(p.getSkillLevel()),
+                escapeCSV(p.getPreferredRole().name()),
+                String.valueOf(p.getPersonalityScore()),
+                escapeCSV(p.getPersonalityType().name())
+        ));
+        writer.newLine();
+    }
+
+    private String escapeCSV(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            value = value.replace("\"", "\"\"");
+            return "\"" + value + "\"";
+        }
+        return value;
+    }
 }

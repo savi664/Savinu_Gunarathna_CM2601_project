@@ -141,7 +141,7 @@ public class TeamBuilder {
 
     private Team findFittingTeam(Participant p) {
         return teams.stream()
-                .filter(t -> canAdd(t, p))
+                .filter(team -> canAdd(team, p))
                 .min(Comparator.comparingInt(t -> t.getParticipantList().size()))
                 .orElse(null);
     }
@@ -194,16 +194,26 @@ public class TeamBuilder {
     // --- constraints ---
 
     private boolean canAdd(Team team, Participant p) {
+        // 1. Size limit
         if (team.getParticipantList().size() >= MAX_TEAM_SIZE) return false;
-
         if (countGame(team, p.getPreferredGame()) >= MAX_SAME_GAME) return false;
 
-        return switch (p.getPersonalityType()) {
-            case LEADER -> countPersonality(team, PersonalityType.LEADER) < MAX_LEADERS;
-            case THINKER -> countPersonality(team, PersonalityType.THINKER) < MAX_THINKERS;
-            case SOCIALIZER -> countPersonality(team, PersonalityType.SOCIALIZER) < MAX_SOCIALIZERS;
-            default -> true;
-        };
+        if (p.getPersonalityType() == PersonalityType.LEADER && countPersonality(team, PersonalityType.LEADER) >= MAX_LEADERS)
+            return false;
+        if (p.getPersonalityType() == PersonalityType.THINKER && countPersonality(team, PersonalityType.THINKER) >= MAX_THINKERS)
+            return false;
+        if (p.getPersonalityType() == PersonalityType.SOCIALIZER && countPersonality(team, PersonalityType.SOCIALIZER) >= MAX_SOCIALIZERS)
+            return false;
+
+        if (!team.getParticipantList().isEmpty()) {
+            double avg = team.getParticipantList().stream()
+                    .mapToInt(Participant::getSkillLevel)
+                    .average()
+                    .orElse(0.0);
+            return !(Math.abs(p.getSkillLevel() - avg) > 2.0); // Too big a jump — reject
+        }
+
+        return true;
     }
 
     private long countGame(Team team, String game) {

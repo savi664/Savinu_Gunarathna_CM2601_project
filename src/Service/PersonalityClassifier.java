@@ -30,7 +30,7 @@ public class PersonalityClassifier {
         };
 
         for (int i = 0; i < questions.length; i++) {
-            System.out.println(questions[i] + " (Enter a number 1-5): ");
+            System.out.print(questions[i] + " (Enter a number 1-5): ");
             if (!scanner.hasNextInt()) {
                 throw new InvalidSurveyDataException("Invalid input. Must be an integer between 1 and 5.");
             }

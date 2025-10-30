@@ -203,20 +203,25 @@ public class Main {
 
     // ============================= ORGANIZER MENU =============================
     private static void organizerMenu() {
-        System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
-        String path = scanner.nextLine().trim();
-        if (path.isEmpty()) path = "participants_sample.csv";
+        // Load CSV only if not already loaded
+        if (teamBuilder == null || teamBuilder.getTeams() == null || teamBuilder.getTeams().isEmpty()) {
+            System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
+            String path = scanner.nextLine().trim();
+            if (path.isEmpty()) path = "participants_sample.csv";
 
-        try {
-            allParticipants = csvHandler.readCSV(path);
-            System.out.println("Loaded " + allParticipants.size() + " participants.");
-        } catch (Exception e) {
-            System.out.println("Failed to load CSV: " + e.getMessage());
-            return;
+            try {
+                allParticipants = csvHandler.readCSV(path);
+                System.out.println("Loaded " + allParticipants.size() + " participants.");
+            } catch (Exception e) {
+                System.out.println("Failed to load CSV: " + e.getMessage());
+                return;
+            }
+
+            // Only create teamBuilder if we have participants
+            if (teamBuilder == null && allParticipants != null) {
+                teamBuilder = new TeamBuilder(allParticipants);
+            }
         }
-
-        teamBuilder = null;
-        formedTeams = null;
 
         while (true) {
             System.out.println("\n--- Organizer Menu ---");
@@ -260,23 +265,21 @@ public class Main {
     }
 
     private static void removeParticipant() {
-        if (allParticipants == null) {
+        if (allParticipants == null || allParticipants.isEmpty()) {
             System.out.println("No participants loaded.");
             return;
         }
         String id = getInput("Enter Participant ID to remove: ");
         boolean removed = allParticipants.removeIf(p -> p.getId().equalsIgnoreCase(id));
         if (removed) {
-            System.out.println("Removed from participant list.");
-            if (teamBuilder != null) {
-                teamBuilder.removeMemberFromTeams(id);
-                formedTeams = teamBuilder.getTeams();
-            }
+            System.out.println("Participant removed from list.");
             try {
                 csvHandler.exportUnassignedUser("participants_sample.csv", allParticipants);
+                System.out.println("CSV updated.");
             } catch (IOException e) {
                 System.out.println("Warning: Could not update CSV: " + e.getMessage());
             }
+            reformTeams();
         } else {
             System.out.println("Participant not found.");
         }
@@ -299,7 +302,18 @@ public class Main {
         }
     }
 
-    // ============================= INPUT HELPERS =============================
+    // ============================= HELPERS =============================
+    private static void reformTeams() {
+        if (allParticipants == null || allParticipants.isEmpty()) {
+            System.out.println("No participants to form teams from.");
+            return;
+        }
+
+        teamBuilder = new TeamBuilder(allParticipants);   // Fresh builder
+        formedTeams = teamBuilder.formTeams();            // Re-form all teams
+        System.out.println("Teams re-formed successfully! " + formedTeams.size() + " team(s).");
+    }
+
     private static String getInput(String prompt) {
         System.out.print(prompt);
         return scanner.nextLine().trim();
