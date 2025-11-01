@@ -8,12 +8,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
     private static final Scanner scanner = new Scanner(System.in);
     private static final CSVHandler csvHandler = new CSVHandler();
     private static final PersonalityClassifier classifier = new PersonalityClassifier();
-
+    private static final ExecutorService executor = Executors.newFixedThreadPool(4);
     private static List<Participant> allParticipants = null;
     private static TeamBuilder teamBuilder = null;
     private static List<Team> formedTeams = null;
@@ -30,6 +32,7 @@ public class Main {
             else organizerMenu();
         }
         scanner.close();
+        Runtime.getRuntime().addShutdownHook(new Thread(executor::shutdownNow));
     }
 
     // ============================= ACTOR MENU =============================
@@ -83,6 +86,12 @@ public class Main {
         PersonalityType type = classifier.classifyPersonality(score);
 
         Participant p = new Participant(id, name, email, game, skill, role, score, type);
+
+        if(teamBuilder!= null || formedTeams!= null){
+            assert teamBuilder != null;
+            teamBuilder.findFittingTeam(p);
+            reformTeams();
+        }
         csvHandler.addToCSV(p);
         allParticipants = null; // force reload
         System.out.println("Registered and saved to CSV!");
@@ -94,6 +103,7 @@ public class Main {
         allParticipants = null;
         if (teamBuilder != null) {
             teamBuilder.removeMemberFromTeams(id);
+            reformTeams();
             formedTeams = teamBuilder.getTeams();
         }
     }
@@ -114,19 +124,31 @@ public class Main {
         }
     }
 
-    private static void updateParticipantInfo() throws IOException, SkillLevelOutOfBoundsException {
-        if (teamBuilder == null || formedTeams == null) {
-            System.out.println("Teams not formed yet. Ask organizer to form teams first.");
-            return;
-        }
-
+    private static void updateParticipantInfo() throws IOException, SkillLevelOutOfBoundsException, InvalidSurveyDataException {
         String id = getInput("Enter your ID: ");
-        Participant p = teamBuilder.findInTeams(id);
-        if (p == null) {
-            System.out.println("You are not in any team.");
-            return;
+
+        // 1. Try to find in current teams (if they exist)
+        Participant p = null;
+        if (teamBuilder != null && formedTeams != null && !formedTeams.isEmpty()) {
+            p = teamBuilder.findInTeams(id);
         }
 
+        // 2. If not in teams → search CSV directly
+        if (p == null) {
+            List<Participant> fromCSV = csvHandler.readCSV("participants_sample.csv");
+            p = fromCSV.stream()
+                    .filter(participant -> participant.getId().equalsIgnoreCase(id))
+                    .findFirst()
+                    .orElse(null);
+
+            if (p == null) {
+                System.out.println("Participant not found in CSV.");
+                return;
+            }
+            System.out.println("Found you in the participant pool (not in a team yet).");
+        }
+
+        // 3. Show current info
         System.out.println("Current Info:");
         System.out.println("  Name: " + p.getName());
         System.out.println("  Email: " + p.getEmail());
@@ -134,6 +156,7 @@ public class Main {
         System.out.println("  Skill: " + p.getSkillLevel());
         System.out.println("  Role: " + p.getPreferredRole());
 
+        // 4. Choose what to update
         System.out.println("\nWhat do you want to change?");
         System.out.println("1. Email");
         System.out.println("2. Preferred Game");
@@ -143,6 +166,7 @@ public class Main {
 
         String attribute;
         Object newValue;
+        boolean balanceAffected = false;
 
         switch (choice) {
             case 1 -> {
@@ -152,14 +176,17 @@ public class Main {
             case 2 -> {
                 attribute = "preferred game";
                 newValue = getInput("New Preferred Game: ");
+                balanceAffected = true;
             }
             case 3 -> {
                 attribute = "skill level";
                 newValue = getUserInput("New Skill Level (1–10): ", 10);
+                balanceAffected = true;
             }
             case 4 -> {
                 attribute = "preferred role";
-                newValue = getValidRole().name();
+                newValue = getValidRole().name().toUpperCase();
+                balanceAffected = true;
             }
             default -> {
                 System.out.println("Invalid choice.");
@@ -167,9 +194,21 @@ public class Main {
             }
         }
 
-        teamBuilder.updateAttribute(id, attribute, newValue);
+        // 5. UPDATE IN MEMORY (if in team)
+        if (teamBuilder != null && teamBuilder.findInTeams(id) != null) {
+            teamBuilder.updateAttribute(id, attribute, newValue);
+        }
+
+        // 6. UPDATE CSV (always – single source of truth)
         syncCSVAfterUpdate();
-        System.out.println("Your info has been updated and saved to CSV.");
+
+        // 7. RE-FORM TEAMS IF BALANCE AFFECTED AND TEAMS EXIST
+        if (balanceAffected && teamBuilder != null) {
+            System.out.println("Balance changed – re-forming teams...");
+           reformTeams();
+        } else {
+            System.out.println("Your info has been updated and saved to CSV.");
+        }
     }
 
     private static void syncCSVAfterUpdate() throws IOException {
@@ -203,26 +242,6 @@ public class Main {
 
     // ============================= ORGANIZER MENU =============================
     private static void organizerMenu() {
-        // Load CSV only if not already loaded
-        if (teamBuilder == null || teamBuilder.getTeams() == null || teamBuilder.getTeams().isEmpty()) {
-            System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
-            String path = scanner.nextLine().trim();
-            if (path.isEmpty()) path = "participants_sample.csv";
-
-            try {
-                allParticipants = csvHandler.readCSV(path);
-                System.out.println("Loaded " + allParticipants.size() + " participants.");
-            } catch (Exception e) {
-                System.out.println("Failed to load CSV: " + e.getMessage());
-                return;
-            }
-
-            // Only create teamBuilder if we have participants
-            if (teamBuilder == null && allParticipants != null) {
-                teamBuilder = new TeamBuilder(allParticipants);
-            }
-        }
-
         while (true) {
             System.out.println("\n--- Organizer Menu ---");
             System.out.println("1. Form Teams");
@@ -247,13 +266,38 @@ public class Main {
     }
 
     private static void formTeams() {
-        if (allParticipants == null || allParticipants.isEmpty()) {
-            System.out.println("No participants loaded.");
-            return;
-        }
-        teamBuilder = new TeamBuilder(allParticipants);
-        formedTeams = teamBuilder.formTeams();
-        System.out.println("Teams formed successfully!");
+        System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
+        String path = scanner.nextLine().trim();
+        if (path.isEmpty()) path = "participants_sample.csv";
+
+        System.out.println("Reading CSV and forming teams in background...");
+        System.out.println("Type anything to continue using the menu while it works.\n");
+
+        // Run in background
+        String finalPath = path;
+        executor.submit(() -> {
+            try {
+                // 1. Read CSV
+                List<Participant> participants = csvHandler.readCSV(finalPath);
+                System.out.println("[Background] Loaded " + participants.size() + " participants.");
+
+                // 2. Form teams (parallel inside TeamBuilder)
+                TeamBuilder builder = new TeamBuilder(participants);
+                List<Team> teams = builder.formTeams();
+
+                // 3. Update shared state (thread-safe)
+                synchronized (Main.class) {
+                    allParticipants = participants;
+                    teamBuilder = builder;
+                    formedTeams = teams;
+                }
+
+                System.out.println("[Background] Teams formed! " + teams.size() + " team(s).");
+                System.out.println(">>> TEAMS ARE READY! Use 'View Teams' to see them. <<<");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private static void viewTeams() {
