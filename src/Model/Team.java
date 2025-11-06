@@ -39,15 +39,12 @@ public class Team {
         return null; // Return -1 if participant is not found
     }
 
-    public int CalculateAvgSkill() {
-        if (participantList.isEmpty()) {
-            return 0; // Return 0 for empty teams
-        }
-        int total = 0;
-        for (Participant p : participantList) {
-            total += p.getSkillLevel();
-        }
-        return total / participantList.size();
+    public double CalculateAvgSkill() {
+        if (participantList.isEmpty()) return 0.0;
+        return participantList.stream()
+                .mapToInt(Participant::getSkillLevel)
+                .average()
+                .orElse(0.0);
     }
 
 
