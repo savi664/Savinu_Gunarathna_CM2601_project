@@ -275,11 +275,11 @@ public class Main {
         }
     }
 
-    private static void formTeams() {
+    private static void formTeams() throws InvalidCSVFilePathException {
         System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
         String path = scanner.nextLine().trim();
         if (path.isEmpty()) {
-            path = "participants_sample.csv";
+            throw new InvalidCSVFilePathException("Please enter a valid CSV filepath");
         }
 
         System.out.println("\nTeam Size Configuration:");
