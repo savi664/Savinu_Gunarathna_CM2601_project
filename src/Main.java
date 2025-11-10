@@ -86,7 +86,16 @@ public class Main {
     private static void registerParticipant() throws IOException, SkillLevelOutOfBoundsException, InvalidSurveyDataException {
         System.out.println("\n--- Register New Participant ---");
 
-        String id = getInput("Enter ID: ");
+        // Checking for identical ID in the Participant list
+        String id = getInput("Enter ID: ").toUpperCase();
+        List<Participant> participants= csvHandler.readCSV("participants_sample.csv");
+        List<String> IDList = participants.stream().map(Participant::getId).toList();
+        if (IDList.contains(id)){
+            System.out.println("Please enter a new ID for the participant as the id already exists");
+            return;
+        }
+
+
         String name = getInput("Enter Name: ");
         String email = getValidEmail();
         String game = getInput("Enter Preferred Game: ");
@@ -275,11 +284,11 @@ public class Main {
         }
     }
 
-    private static void formTeams() {
+    private static void formTeams() throws InvalidCSVFilePathException {
         System.out.print("Enter CSV path (or press Enter for participants_sample.csv): ");
         String path = scanner.nextLine().trim();
         if (path.isEmpty()) {
-            path = "participants_sample.csv";
+            throw new InvalidCSVFilePathException("Please enter a valid CSV filepath");
         }
 
         System.out.println("\nTeam Size Configuration:");
