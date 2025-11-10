@@ -5,6 +5,7 @@ import Exception.SkillLevelOutOfBoundsException;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TeamBuilder {
     private final List<Participant> participantPool;
@@ -48,7 +49,7 @@ public class TeamBuilder {
         // Phase 1: Form constraint-compliant teams with EXACTLY teamSize members
         while (remaining.size() >= teamSize && canFormCompliantTeam(remaining)) {
             Team team = new Team(nextTeamId++);
-            List<Participant> teamMembers = selectTeamMembers(remaining, team);
+            List<Participant> teamMembers = selectTeamMembers(remaining);
 
             // Only add if we got exactly teamSize members
             if (teamMembers.size() == teamSize) {
@@ -114,7 +115,7 @@ public class TeamBuilder {
         return availableRoles.size() >= MIN_ROLE_DIVERSITY;
     }
 
-    private List<Participant> selectTeamMembers(List<Participant> available, Team team) {
+    private List<Participant> selectTeamMembers(List<Participant> available) {
         List<Participant> selected = new ArrayList<>();
         List<Participant> candidates = new ArrayList<>(available);
 

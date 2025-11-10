@@ -86,7 +86,16 @@ public class Main {
     private static void registerParticipant() throws IOException, SkillLevelOutOfBoundsException, InvalidSurveyDataException {
         System.out.println("\n--- Register New Participant ---");
 
-        String id = getInput("Enter ID: ");
+        // Checking for identical ID in the Participant list
+        String id = getInput("Enter ID: ").toUpperCase();
+        List<Participant> participants= csvHandler.readCSV("participants_sample.csv");
+        List<String> IDList = participants.stream().map(Participant::getId).toList();
+        if (IDList.contains(id)){
+            System.out.println("Please enter a new ID for the participant as the id already exists");
+            return;
+        }
+
+
         String name = getInput("Enter Name: ");
         String email = getValidEmail();
         String game = getInput("Enter Preferred Game: ");
