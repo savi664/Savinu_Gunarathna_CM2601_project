@@ -5,7 +5,6 @@ import Exception.SkillLevelOutOfBoundsException;
 
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class TeamBuilder {
     private final List<Participant> participantPool;
@@ -85,8 +84,8 @@ public class TeamBuilder {
             // Take up to teamSize participants, or all remaining if less
             int count = Math.min(teamSize, remaining.size());
             for (int i = 0; i < count; i++) {
-                overflowTeam.addMember(remaining.get(0));
-                remaining.remove(0);
+                overflowTeam.addMember(remaining.getFirst());
+                remaining.removeFirst();
             }
 
             overflowTeams.add(overflowTeam);
@@ -319,7 +318,7 @@ public class TeamBuilder {
             System.out.printf(
                     "ID: %-5s | Name: %-15s | Game: %-10s | Skill: %-2d | Role: %-11s | Type: %-10s%n",
                     participant.getId(),
-                    truncate(participant.getName(), 15),
+                    truncate(participant.getName()),
                     participant.getPreferredGame(),
                     participant.getSkillLevel(),
                     participant.getPreferredRole(),
@@ -448,9 +447,9 @@ public class TeamBuilder {
         System.out.println("==========================\n");
     }
 
-    private String truncate(String str, int length) {
+    private String truncate(String str) {
         if (str == null) return "";
-        return str.length() > length ? str.substring(0, length - 2) + ".." : str;
+        return str.length() > 15 ? str.substring(0, 15 - 2) + ".." : str;
     }
 
     public Team findFittingTeam(Participant participant) {
@@ -483,8 +482,8 @@ public class TeamBuilder {
         for (int iteration = 0; iteration < 30; iteration++) {
             teams.sort(Comparator.comparingDouble(Team::CalculateAvgSkill));
 
-            Team weakestTeam = teams.get(0);
-            Team strongestTeam = teams.get(teams.size() - 1);
+            Team weakestTeam = teams.getFirst();
+            Team strongestTeam = teams.getLast();
 
             double skillGap = strongestTeam.CalculateAvgSkill() - weakestTeam.CalculateAvgSkill();
             if (skillGap < 1.0) {
